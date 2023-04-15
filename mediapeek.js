@@ -2,6 +2,7 @@
 const MAX_TEXT_LENGTH_TREE = 500;
 //maximum length for text string to be displayed in the texts portion of the UI
 const MAX_TEXT_LENGTH_TEXTS = 2000000;
+const MAX_PICTURE_SIZE = 10000000;
 //arrays for the strings we're displaying
 const textNames = [];
 const textValues = [];
@@ -62,6 +63,8 @@ async function getDataFor(file) {
         //file type isn't known or an error  
         document.getElementById('infotext').innerHTML = "This file is not a known file type.";
     }
+    //load the media file into the appropriate window
+    loadPlayer(file);
     //make the data look good again
     listree();
     populateTexts();
@@ -688,6 +691,43 @@ function formatFileSize(bytes) {
         sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'],
         i = Math.floor(Math.log(bytes) / Math.log(k));
     return bytes + ' bytes (' + parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i] + ')';
+}
+
+// Display picture/video/sound player
+function loadPlayer(file) {
+    var thetype = file.type;
+    var displayNode = document.getElementById('filedisplay');
+    //now display if possible
+    if (thetype.startsWith("image/") && (!thetype.startsWith("image/tiff"))) {
+        //display an image
+        //don't want to run the browser out of memory
+        if (file.size < MAX_PICTURE_SIZE) {
+            var reader = new FileReader();
+            reader.onload = function (event) {
+                the_url = event.target.result;
+                displayNode.innerHTML = "<img class='imgdisplay' src='" + the_url + "' />";
+            }
+            reader.readAsDataURL(file);
+        }
+    } else if (thetype.startsWith("video/") || thetype.startsWith("audio/")) {
+        //display a video
+        displayNode.innerHTML = "<video id='videodisplay'></video>";
+        var videoNode = document.getElementById('videodisplay');
+        videoNode.setAttribute("src", "");
+        videoNode.style.visibility = "hidden";
+        videoNode.setAttribute("controls", false);
+        var canPlay = videoNode.canPlayType(thetype);
+        if (canPlay != '') {
+            var fileURL = URL.createObjectURL(file);
+            videoNode.src = fileURL;
+            videoNode.style.visibility = "";
+            videoNode.setAttribute("controls", true);
+        } else {
+            displayNode.innerHTML = "FILE CANNOT BE DISPLAYED";
+        }
+    } else {
+        displayNode.innerHTML = "FILE CANNOT BE DISPLAYED";
+    }
 }
 
 /******************************************************************************************************* */
