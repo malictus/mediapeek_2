@@ -1,0 +1,43 @@
+<html>
+    <head>
+        <title>Media Peek</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="styles.css">
+    </head>
+
+    <body>
+        <p class="thetitle">Media Peek</p>
+        <p class="thesubtitle">by Jim Halliday</p>
+        <div class="row">
+            <div class="column" id="draggie">
+                <div id="dropzone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+                    <p>Drag a single file here.</p>
+                </div>
+                <div id="inputfilezone">
+                    <br />OR<br /><br />use the button below to select a file<br /><br />
+                    <input type="file" id="file-selector">
+                </div>
+            </div>
+            <div class="column" id="filemeta">
+                <div class="filemetadata">
+                    <span class="aheader">FILE SYSTEM METADATA</span><br />
+                    <br /><span class="aheader">File name:</span> <span id="filename">No file specified.</span>
+                    <br /><span class="aheader">File type:</span> <span id="filetype">No file specified.</span>
+                    <br /><span class="aheader">File size:</span> <span id="filesize">No file specified.</span>
+                    <br /><span class="aheader">Last Modified:</span> <span id="filemodified">No file specified.</span>
+                </div>
+            </div>
+        </div>
+        <div id="thetextsdiv" class="column">
+            <span class="aheader">EMBEDDED METADATA</span><br /><br />
+            <div id="infotext"></div><br />
+            <div id="thetexts"></div>
+        </div>
+        <div id="fileinfodiv" class="column">
+            <span class="aheader">FILE STRUCTURE TREE</span><br /><br />
+            <div id="filetree"></div>
+        </div>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+        <script type="text/javascript" src="mediapeek.js"></script>
+    </body>
+</html>
