@@ -59,6 +59,9 @@ async function getDataFor(file) {
     } else if (thefiletype == "TIFF") { 
         document.getElementById('infotext').innerHTML = "This file is a TIFF image file.";
         await getTIFFdata(file);
+    } else if (thefiletype == "WAV") {
+        document.getElementById('infotext').innerHTML = "This file is a WAV sound file.";
+        await getWAVdata(file);
     } else {
         //file type isn't known or an error  
         document.getElementById('infotext').innerHTML = "This file is not a known file type.";
@@ -90,6 +93,8 @@ function figureOutFileTypeFor(aview) {
             return "PNG";
         } else if (isTIFF(aview)) {
             return "TIFF";
+        } else if (isWAV(aview)) {
+            return "WAV";
         } else {
             return "unknown file type";
         }
@@ -134,6 +139,48 @@ function populateTexts() {
         });
     }
 }
+
+/************************************************************************************************************ */
+/**
+ * WAV functions
+ * 
+ * */
+function isWAV(aview) {
+    if ((readText(aview, 0, 4) == "RIFF") && (readText(aview, 8, 4) == "WAVE")) {
+        return true;
+    }
+    return false;
+}
+
+//we've confirmed it's a WAV file, now grab all the metadata out of the file chunk by chunk
+async function getWAVdata(file) {
+    try {
+        //get the UI tree element built and the root UL element
+        let fileinfolist = buildTreeRoot();
+        let rootnode = makeNewNode("WAV Sound File Tree (Click to Expand)");
+        fileinfolist.appendChild(rootnode);
+        //for now, we are ignoring overall RIFF chunk size, and just reading each individual chunk until EOF reached
+        bytepos = 12;
+        moreleft = true;
+        while (moreleft) {
+            abuff = await file.slice(bytepos, bytepos + 8).arrayBuffer();
+            aview = new DataView(abuff);
+            chunkname = readText(aview, 0, 4);
+            length = aview.getUint32(4, true);
+            console.log("CHUNK " + chunkname + " length " + length);
+            bytepos = bytepos + 8 + length + (length % 2);  //include pad byte for odd lengths
+            console.log(file.size + " file length ");
+            console.log(bytepos + " bytepos ");
+            if (bytepos >= file.size) {
+                moreleft = false;
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+    }
+}
+
 
 /************************************************************************************************************ */
 /**
