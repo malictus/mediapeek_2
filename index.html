@@ -11,17 +11,17 @@
             <span class="instructions">
                 Drag a file to the box below to see metadata about it!<br />
                 Files currently accepted: <b>WAV</b>, <b>PNG</b>, <b>TIFF</b><br />
-                OR use this button: <input type="file" id="file-selector"><br/><br/>
+                OR use this button: <input type="file" id="file-selector"><br /><br />
             </span>
         </div>
         <div class="row">
             <div id="thetextsdiv" class="column">
-                <span class="thesubtitle">FILE METADATA</span><br/>
+                <span class="thesubtitle">FILE METADATA</span><br /><br />
+                <div id="infotext"></div>
                 <br /><span class="aheader">File name:</span> <span id="filename">No file specified.</span>
                 <br /><span class="aheader">File type:</span> <span id="filetype">No file specified.</span>
                 <br /><span class="aheader">File size:</span> <span id="filesize">No file specified.</span>
-                <br /><span class="aheader">Last Modified:</span> <span id="filemodified">No file specified.</span>
-                <div id="infotext"></div><br />
+                <br /><span class="aheader">Last Modified:</span> <span id="filemodified">No file specified.</span><br /><br />
                 <div id="thetexts"></div>
             </div>
             <div id="filedisplay" class="column" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
@@ -35,5 +35,8 @@
         </div>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
         <script type="text/javascript" src="mediapeek.js"></script>
+        <script type="text/javascript" src="tiff.js"></script>
+        <script type="text/javascript" src="wav.js"></script>
+        <script type="text/javascript" src="png.js"></script>
     </body>
 </html>
