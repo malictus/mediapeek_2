@@ -29,6 +29,34 @@ async function getWAVdata(file) {
             if (chunkname == "data") {
                 let li = makeNewBottomNode("data Chunk (" + length + " bytes" + ") - Audio Sample Data");
                 rootnode.children[1].appendChild(li);
+            } else if (chunkname == "fmt ") {
+                if (length >= 16) {
+                    //this node will be parent of others (ul)
+                    let sublist = makeNewNode("fmt Chunk (" + length + " bytes" + ") -  Audio Format Metadata");
+                    rootnode.children[1].appendChild(sublist);
+                    //read chunk into memory (we only care about first 16 bytes, for now)
+                    hdrbuff = await file.slice(bytepos + 8, bytepos + 24).arrayBuffer();
+                    hdrview = new DataView(hdrbuff);
+                    //audio format
+                    audioformat = hdrview.getUint16(0, true);
+                    sublist.children[1].appendChild(makeNewBottomNode("Audio Format: " + audioformat));
+                    textNames.push("fmt Chunk - Audio Format");
+                    textValues.push(audioformat);
+                    //number of channels
+                    numchannels = hdrview.getUint16(2, true);
+                    sublist.children[1].appendChild(makeNewBottomNode("Number of Channels: " + numchannels));
+                    textNames.push("fmt Chunk - Number of Channels");
+                    textValues.push(numchannels);
+                    //sampling rate
+                    samplingrate = hdrview.getUint16(4, true);
+                    sublist.children[1].appendChild(makeNewBottomNode("Sampling Rate: " + samplingrate));
+                    textNames.push("fmt Chunk - Sampling Rate");
+                    textValues.push(samplingrate);
+                } else {
+                    //shouldn't ever happen, but just in case
+                    let li = makeNewBottomNode("fmt Chunk (" + length + " bytes" + ") - Audio Format Data");
+                    rootnode.children[1].appendChild(li);
+                }
             } else if (chunkname == "_PMX") {
                 if (length > MAX_TEXT_LENGTH_TEXTS) {
                     //really really large text field; don't grab it
