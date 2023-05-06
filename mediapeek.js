@@ -2,6 +2,7 @@
 const MAX_TEXT_LENGTH_TREE = 500;
 //maximum length for text string to be displayed in the texts portion of the UI
 const MAX_TEXT_LENGTH_TEXTS = 2000000;
+//maximum size to display a picture
 const MAX_PICTURE_SIZE = 10000000;
 //arrays for the strings we're displaying
 const textNames = [];
