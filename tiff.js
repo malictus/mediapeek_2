@@ -202,7 +202,6 @@ async function getTIFFdata(file) {
                                 tagentry = makeNewBottomNode(labelfortag);
                             }
                             break;
-                        //TODO: add all the tifftag types above, finish EXIF metadata, add compression types etc, and go through all my sample images again
                         default:
                             tagentry = makeNewBottomNode(labelfortag);
                     }
@@ -251,7 +250,6 @@ async function readEXIF(exifstart, file, isLittleEndian, exiflist) {
             labelfortag = labelfortag + " (" + thenode.name + ")";
         }
         //can we parse this further?
-        //first special cases
         switch (fieldtype) {
             case 2:
                 //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
