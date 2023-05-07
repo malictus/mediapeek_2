@@ -1,5 +1,15 @@
 //constant array that represents all TIFF tags we know so far
 const tifftags = [
+    { "tag": 1, "name": "GPS Latitude Ref" },
+    { "tag": 2, "name": "GPS Latitude" },
+    { "tag": 3, "name": "GPS Longitude Ref" },
+    { "tag": 4, "name": "GPS Longitude" },
+    { "tag": 5, "name": "GPS Altitude Ref" },
+    { "tag": 6, "name": "GPS Altitude" },
+    { "tag": 7, "name": "GPS Time Stamp" },
+    { "tag": 16, "name": "GPS Image Direction Ref" },
+    { "tag": 17, "name": "GPS Image Direction" },
+    { "tag": 29, "name": "GPS Date Stamp" },
     { "tag": 254, "name": "New Subfile Type"},
     { "tag": 256, "name": "Image Width" },
     { "tag": 257, "name": "Image Height" },
@@ -39,14 +49,24 @@ const tifftags = [
     { "tag": 34377, "name": "Photoshop Private Tag" },
     { "tag": 34665, "name": "EXIF IFD" },
     { "tag": 34675, "name": "ICC Profile Data" },
+    { "tag": 34850, "name": "Exposure Program" },
     { "tag": 34855, "name": "ISO Speed Ratings" },
     { "tag": 36864, "name": "EXIF Version" },
     { "tag": 36867, "name": "Date Time Original" },
     { "tag": 36868, "name": "Date Time Digitized" },
+    { "tag": 36880, "name": "Offset Time" },
+    { "tag": 36881, "name": "Offset Time Original" },
+    { "tag": 36882, "name": "Offset Time Digitized" },
     { "tag": 37121, "name": "Components Configuration" },
     { "tag": 37377, "name": "Shutter Speed Value" },
     { "tag": 37378, "name": "Aperture Value" },
+    { "tag": 37379, "name": "Brightness Value" },
+    { "tag": 37381, "name": "Max Aperture Value" },
+    { "tag": 37382, "name": "Subject Distance" },
+    { "tag": 37383, "name": "Metering Mode" },
     { "tag": 37510, "name": "User Comment" },
+    { "tag": 37521, "name": "Subsec Time Original" },
+    { "tag": 37522, "name": "Subsec Time Digitized" },
     { "tag": 37380, "name": "Exposure Bias Value" },
     { "tag": 37385, "name": "Flash" },
     { "tag": 37386, "name": "Focal Length" },
@@ -58,12 +78,24 @@ const tifftags = [
     { "tag": 41486, "name": "Focal Plane X Resolution" },
     { "tag": 41487, "name": "Focal Plane Y Resolution" },
     { "tag": 41488, "name": "Focal Plane Resolution Unit" },
+    { "tag": 41495, "name": "Sensing Method" },
+    { "tag": 41729, "name": "Scene Type" },
     { "tag": 41985, "name": "Custom Rendered" },
     { "tag": 41986, "name": "Exposure Mode" },
     { "tag": 41987, "name": "White Balance" },
+    { "tag": 41988, "name": "Digital Zoom Ratio" },
+    { "tag": 41989, "name": "Focal Length In 35mm Film" },
     { "tag": 41990, "name": "Scene Capture Type" },
+    { "tag": 41992, "name": "Contrast" },
+    { "tag": 41993, "name": "Saturation" },
+    { "tag": 41994, "name": "Sharpness" },
+    { "tag": 41996, "name": "Subject Distance Range" },
+    { "tag": 42035, "name": "Lens Make" },
+    { "tag": 42036, "name": "Lens Model" },
 ];
-
+//negative markers for latitude and longitude
+let negLat = false;
+let negLong = false;
 
 /************************************************************************************************************ */
 /**
@@ -92,6 +124,9 @@ function isTIFF(aview) {
 //we've confirmed it's a TIFF file, now grab all the metadata out of the file chunk by chunk
 async function getTIFFdata(file) {
     try {
+        //reset these
+        negLat = false;
+        negLong = false;
         //get the UI tree element built and the root UL element
         let fileinfolist = buildTreeRoot();
         let rootnode = makeNewNode("TIFF Image File Tree (Click to Expand)");
@@ -156,14 +191,25 @@ async function getTIFFdata(file) {
                     //EXIF metadata; go and find those tags and read them
                     let exiflist = makeNewNode("TAG #34665 EXIF METADATA ");
                     sublist.children[1].appendChild(exiflist);
-                    exifstart = aview.getUint32(offset + 8, isLittleEndian);
+                    let exifstart = aview.getUint32(offset + 8, isLittleEndian);
                     await readEXIF(exifstart, file, isLittleEndian, exiflist);
+                } else if (idtag == 34853) {
+                    //EXIF GPS metadata; go and find those tags and read them
+                    let gpslist = makeNewNode("TAG #34853 EXIF (GPS) METADATA ");
+                    sublist.children[1].appendChild(gpslist);
+                    let gpsstart = aview.getUint32(offset + 8, isLittleEndian);
+                    await readEXIF(gpsstart, file, isLittleEndian, gpslist);
                 } else {
                     //process based on field type
                     switch (fieldtype) {
                         case 2:
-                            //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
-                            tagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag);
+                            //if four bytes or less, read directly from here
+                            if (fieldcount < 5) {
+                                tagentry = await readTIFFTextTag(file, fieldcount, offsettoIFD +2 + offset + 8, labelfortag);
+                            } else {
+                                //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
+                                tagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag);
+                            }
                             break;
                         case 3:
                             //16 bit unsigned; display it if there's only one
@@ -250,53 +296,102 @@ async function readEXIF(exifstart, file, isLittleEndian, exiflist) {
             labelfortag = labelfortag + " (" + thenode.name + ")";
         }
         //can we parse this further?
-        switch (fieldtype) {
-            case 2:
-                //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
-                exiftagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag);
-                break;
-            case 3:
-                //16 bit unsigned; display it if there's only one
-                if (fieldcount == 1) {
-                    theval = aview.getUint16(offset + 8, isLittleEndian);
-                    exiftagentry = makeNewBottomNode(labelfortag + ": " + theval);
-                    textNames.push(labelfortag);
-                    textValues.push(theval);
-                } else {
+        //first special cases
+        if (((idtag == 2) || (idtag ==4)) && (fieldcount == 3) && (fieldtype = 5)) {
+            //calculate the latitude and longitude
+            let subarea = aview.getUint32(offset + 8, isLittleEndian);
+            let subbuff = await file.slice(subarea, subarea + 24).arrayBuffer();
+            let subview = new DataView(subbuff);
+            let numerator1 = subview.getUint32(0, isLittleEndian);
+            let denominator1 = subview.getUint32(4, isLittleEndian);
+            let numerator2 = subview.getUint32(8, isLittleEndian);
+            let denominator2 = subview.getUint32(12, isLittleEndian);
+            let numerator3 = subview.getUint32(16, isLittleEndian);
+            let denominator3 = subview.getUint32(20, isLittleEndian);
+            exiftagentry = makeNewBottomNode(labelfortag + ": " + (numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
+            textNames.push(labelfortag);
+            textValues.push((numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
+            if (idtag == 2) {
+                OSMLatitude = (numerator1 / denominator1) + ((numerator2 / denominator2) / 60) + ((numerator3 / denominator3) / 3600);
+            } else if (idtag == 4) {
+                OSMLongitude = (numerator1 / denominator1) + ((numerator2 / denominator2) / 60) + ((numerator3 / denominator3) / 3600);
+            }
+        } else {
+            switch (fieldtype) {
+                case 2:
+                    if (fieldcount < 5) {
+                        if (idtag == 1) {
+                            //get latitude marker - technically we now read this value twice, but I think it's OK
+                            latTest = readText(aview, offset + 8, 1);
+                            if (latTest == "S") {
+                                negLat = true;
+                            }
+                        }
+                        if (idtag == 3) {
+                            //get latitude marker - technically we now read this value twice, but I think it's OK
+                            longTest = readText(aview, offset + 8, 1);
+                            if (longTest == "W") {
+                                negLong = true;
+                            }
+                        }
+                        exiftagentry = await readTIFFTextTag(file, fieldcount, exifstart + 2 + offset + 8, labelfortag);
+                    } else {
+                        //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
+                        exiftagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag);
+                    }
+                    break;
+                case 3:
+                    //16 bit unsigned; display it if there's only one
+                    if (fieldcount == 1) {
+                        theval = aview.getUint16(offset + 8, isLittleEndian);
+                        exiftagentry = makeNewBottomNode(labelfortag + ": " + theval);
+                        textNames.push(labelfortag);
+                        textValues.push(theval);
+                    } else {
+                        exiftagentry = makeNewBottomNode(labelfortag);
+                    }
+                    break;
+                case 4:
+                    //32 bit unsigned; display it if there's only one
+                    if (fieldcount == 1) {
+                        theval = aview.getUint32(offset + 8, isLittleEndian);
+                        exiftagentry = makeNewBottomNode(labelfortag + ": " + theval);
+                        textNames.push(labelfortag);
+                        textValues.push(theval);
+                    } else {
+                        exiftagentry = makeNewBottomNode(labelfortag);
+                    }
+                    break;
+                case 5:
+                    //fractional value; go read it and display it if there's only one
+                    if (fieldcount == 1) {
+                        let subarea = aview.getUint32(offset + 8, isLittleEndian);
+                        let subbuff = await file.slice(subarea, subarea + 8).arrayBuffer();
+                        let subview = new DataView(subbuff);
+                        let numerator = subview.getUint32(0, isLittleEndian);
+                        let denominator = subview.getUint32(4, isLittleEndian);
+                        exiftagentry = makeNewBottomNode(labelfortag + ": " + numerator + "/" + denominator);
+                        textNames.push(labelfortag);
+                        textValues.push(numerator + "/" + denominator);
+                    } else {
+                        exiftagentry = makeNewBottomNode(labelfortag);
+                    }
+                    break;
+                default:
                     exiftagentry = makeNewBottomNode(labelfortag);
-                }
-                break;
-            case 4:
-                //32 bit unsigned; display it if there's only one
-                if (fieldcount == 1) {
-                    theval = aview.getUint32(offset + 8, isLittleEndian);
-                    exiftagentry = makeNewBottomNode(labelfortag + ": " + theval);
-                    textNames.push(labelfortag);
-                    textValues.push(theval);
-                } else {
-                    exiftagentry = makeNewBottomNode(labelfortag);
-                }
-                break;
-            case 5:
-                //fractional value; go read it and display it if there's only one
-                if (fieldcount == 1) {
-                    let subarea = aview.getUint32(offset + 8, isLittleEndian);
-                    let subbuff = await file.slice(subarea, subarea + 8).arrayBuffer();
-                    let subview = new DataView(subbuff);
-                    let numerator = subview.getUint32(0, isLittleEndian);
-                    let denominator = subview.getUint32(4, isLittleEndian);
-                    exiftagentry = makeNewBottomNode(labelfortag + ": " + numerator + "/" + denominator);
-                    textNames.push(labelfortag);
-                    textValues.push(numerator + "/" + denominator);
-                } else {
-                    exiftagentry = makeNewBottomNode(labelfortag);
-                }
-                break;
-            default:
-                exiftagentry = makeNewBottomNode(labelfortag);
+            }
         }
         exiflist.children[1].appendChild(exiftagentry);
         tagcount++;
+    }
+    //now that all tags are read, adjust for negative latitude and longitude values, if applicable
+    if ((OSMLatitude != 0) || (OSMLongitude != 0)) {
+        if ((negLat == true) && (OSMLatitude > 0)) {
+            OSMLatitude = -OSMLatitude;
+        }
+        if ((negLong == true) && (OSMLongitude > 0)) {
+            OSMLongitude = -OSMLongitude;
+        }
     }
 }
 
@@ -308,16 +403,16 @@ async function readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag) {
         tview = new DataView(tbuff);
         val = readText(tview, 0, (fieldcount - 1));
         if (fieldcount < MAX_TEXT_LENGTH_TREE) {
-            tagentry = makeNewBottomNode(labelfortag + ": " + val);
+            subentry = makeNewBottomNode(labelfortag + ": " + val);
         } else {
-            tagentry = makeNewBottomNode(labelfortag + ": TOO LONG TO DISPLAY HERE");
+            subentry = makeNewBottomNode(labelfortag + ": TOO LONG TO DISPLAY HERE");
         }
         textNames.push(labelfortag);
         textValues.push(val);
     } else {
-        tagentry = makeNewBottomNode(labelfortag);
+        subentry = makeNewBottomNode(labelfortag);
         textNames.push(labelfortag);
         textValues.push("VALUE TOO LONG TO BE DISPLAYED");
     }
-    return tagentry;
+    return subentry;
 }

@@ -11,6 +11,11 @@ body {
     height:100vh;
 }
 
+#map {
+    height: 180px;
+    background-color: white;
+}
+
 .headerarea {
     text-align: center;
 }

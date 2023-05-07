@@ -7,6 +7,9 @@ const MAX_PICTURE_SIZE = 10000000;
 //arrays for the strings we're displaying
 const textNames = [];
 const textValues = [];
+//holders for latitude and longitude for the openstreetmap view
+OSMLatitude = 0;
+OSMLongitude = 0;
 
 /************************************************************************************************************ */
 /**
@@ -72,6 +75,7 @@ async function getDataFor(file) {
     //make the data look good again
     listree();
     populateTexts();
+    populateStreetMap();
 }
 
 /************************************************************************************************************ */
@@ -117,6 +121,10 @@ function clearOldData() {
     //also clear out the text arrays
     textNames.length = 0;
     textValues.length = 0;
+    //clear GPS
+    OSMLatitude = 0;
+    OSMLongitude = 0;
+    document.getElementById('map').innerHTML = "";
 }
 
 //populate the texts portion of the interface after a new file has been opened
@@ -138,6 +146,24 @@ function populateTexts() {
                 content.style.maxHeight = content.scrollHeight + "px";
             }
         });
+    }
+}
+
+//populate the street map portion of the interface after a new file has been opened
+function populateStreetMap() {
+    if ((OSMLatitude != 0) || (OSMLongitude != 0)) {
+        var container = L.DomUtil.get('map');
+        if (container != null) {
+            container._leaflet_id = null;
+        }
+        var map = L.map('map').setView([OSMLatitude, OSMLongitude], 13);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        var marker = L.marker([OSMLatitude, OSMLongitude]).addTo(map);
+    } else {
+        document.getElementById('map').innerHTML = "NONE FOUND";
     }
 }
 
