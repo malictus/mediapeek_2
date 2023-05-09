@@ -92,7 +92,7 @@ async function getPNGdata(file) {
                 sublist.children[1].appendChild(makeNewBottomNode("Second: " + second));
                 textNames.push("tIME Chunk: Last Modified Date");
                 textValues.push(year + "/" + month + "/" + day + " " + hour + ":" + minute + ":" + second);
-            } else if ((chunktype == "zTXt") || (chunktype == 'tEXt')) {
+            } else if ((chunktype == "zTXt") || (chunktype == 'tEXt') || (chunktype == 'iTXt')) {
                 if (length > MAX_TEXT_LENGTH_TEXTS) {
                     //really really large text field; don't grab it
                     let li = makeNewBottomNode(chunktype + " Chunk (" + length + " bytes" + ") - Text Information - TOO LARGE TO DISPLAY");
@@ -103,7 +103,7 @@ async function getPNGdata(file) {
                     //this node will be parent of others (ul)
                     let sublist = makeNewNode(chunktype + " Chunk (" + length + " bytes" + ") - Text Information");
                     rootnode.children[1].appendChild(sublist);
-                    //read tEXt / zTXt chunk into memory
+                    //read tEXt / zTXt / iTXt chunk into memory
                     hdrbuff = await file.slice(bytepos + 8, bytepos + 8 + length).arrayBuffer();
                     hdrview = new DataView(hdrbuff);
                     nullpos = findNullSeparatorIn(hdrview);
@@ -111,8 +111,19 @@ async function getPNGdata(file) {
                     theText = "error";
                     if (chunktype == "zTXt") {
                         theText = readCompressedText(hdrview, nullpos + 1, hdrview.byteLength - (nullpos + 1)); // +1 because there is a compression method byte (always 0)
-                    } else {
+                    } else if (chunktype == "tEXt") {
                         theText = readText(hdrview, nullpos, hdrview.byteLength - nullpos);
+                    } else {
+                        //iTXt
+                        //TODO: currently this assumes no language tag or translated keyword; will not work if they are present
+                        //read compression flag
+                        compressionFlag = hdrview.getUint8(nullpos + 1);
+                        if (compressionFlag == 0) {
+                            //uncompressed 
+                            theText = readText(hdrview, nullpos + 4, hdrview.byteLength - (nullpos + 4));
+                        } else {
+                            theText = readCompressedText(hdrview, nullpos + 4, hdrview.byteLength - (nullpos + 4));
+                        }
                     }
                     sublist.children[1].appendChild(makeNewBottomNode("Keyword: " + keyword));
                     if (length > MAX_TEXT_LENGTH_TREE) {
@@ -123,10 +134,26 @@ async function getPNGdata(file) {
                     //add to our text lists
                     if (chunktype == "zTXt") {
                         textNames.push("zTXt Chunk Compressed Text: " + keyword);
-                    } else {
+                    } else if (chunktype == "tEXt") {
                         textNames.push("tEXt Chunk Text: " + keyword);
+                    } else {
+                        textNames.push("iTXt Chunk Text: " + keyword);
                     }
                     textValues.push(theText);
+                    //dig into XMP text data to see if there are GPS coordinates
+                    if (keyword.toUpperCase().includes("XMP")) {
+                        if ((theText.includes("exif:GPSLatitude=")) && (theText.includes("exif:GPSLongitude="))) {
+                            latstart = theText.indexOf("exif:GPSLatitude=\"") + 18;
+                            latend = theText.indexOf("\"", latstart);
+                            lat = theText.substring(latstart, latend);
+                            longstart = theText.indexOf("exif:GPSLongitude=\"") + 19;
+                            longend = theText.indexOf("\"", longstart);
+                            long = theText.substring(longstart, longend);
+                            //TODO - convert this format to decimal
+                            OSMLatitude = lat;
+                            OSMLongitude = long;
+                        }
+                    }
                 }
             } else if (chunktype == "pHYs" && length == 9) {
                 //this node will be parent of others (ul)

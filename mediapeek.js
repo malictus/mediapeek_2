@@ -1,9 +1,9 @@
 //maximum length for text strings to be displayed in the tree part of the UI
 const MAX_TEXT_LENGTH_TREE = 500;
 //maximum length for text string to be displayed in the texts portion of the UI
-const MAX_TEXT_LENGTH_TEXTS = 2000000;
+const MAX_TEXT_LENGTH_TEXTS = 20000000;
 //maximum size to display a picture
-const MAX_PICTURE_SIZE = 10000000;
+const MAX_PICTURE_SIZE = 100000000;
 //arrays for the strings we're displaying
 const textNames = [];
 const textValues = [];
@@ -277,6 +277,8 @@ function formatFileSize(bytes) {
 function loadPlayer(file) {
     var thetype = file.type;
     var displayNode = document.getElementById('filedisplay');
+    //start with this, in case it can't be displayed
+    displayNode.innerHTML = "FILE CANNOT BE DISPLAYED";
     //now display if possible
     if (thetype.startsWith("image/") && (!thetype.startsWith("image/tiff"))) {
         //display an image
@@ -302,12 +304,8 @@ function loadPlayer(file) {
             videoNode.src = fileURL;
             videoNode.style.visibility = "";
             videoNode.setAttribute("controls", true);
-        } else {
-            displayNode.innerHTML = "FILE CANNOT BE DISPLAYED";
-        }
-    } else {
-        displayNode.innerHTML = "FILE CANNOT BE DISPLAYED";
-    }
+        } 
+    } 
 }
 
 /******************************************************************************************************* */
