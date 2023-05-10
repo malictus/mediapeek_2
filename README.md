@@ -1,5 +1,5 @@
 # Media Peek
-A pure javascript application for extracting metadata and GPS data from media files
+A pure javascript application for extracting metadata and GPS data from media files in an easy-to-use GUI application
 
 * pull out and display metadata from within media files
 * visualize the file structure in a tree-like format
