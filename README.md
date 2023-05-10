@@ -14,7 +14,7 @@ I'll try to keep a current version of this online here: https://malictus.com/med
 
 Uses the following bits
 
-* listree() for displaying tree hierarchy - see https://github.com/SuryaSankar/listree
+* listree for displaying tree hierarchy - see https://github.com/SuryaSankar/listree
 * pako for inflating compressed text - see https://github.com/nodeca/pako
 * leaflet for generating GPS maps - see https://leafletjs.com/
 * openstreetmaps for display maps - see https://www.openstreetmap.org/
