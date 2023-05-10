@@ -8,6 +8,8 @@ A pure javascript application for extracting metadata and GPS data from media fi
 * works with any size file - only reads metadata portions of the file so it's fast!
 * 100% pure javascript with custom code for reading files; not built on bulky file-reading libraries
 
+Currently works with TIFF, WAV, and PNG files. More formats coming soon!
+
 I'll try to keep a current version of this online here: https://malictus.com/mediapeek/
 
 Uses the following bits
