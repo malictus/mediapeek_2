@@ -6,8 +6,13 @@ A pure javascript application for extracting metadata and GPS data from media fi
 * extract and display embedded GPS metadata
 * NO UPLOADING; does all the work locally
 * works with any size file - only reads metadata portions of the file so it's fast!
-* 100% pure javascript with custom code for reading files; not built on bulky libraries
+* 100% pure javascript with custom code for reading files; not built on bulky file-reading libraries
 
 I'll try to keep a current version of this online here: https://malictus.com/mediapeek/
 
+Uses the following bits
 
+listree() for displaying tree hierarchy - see https://github.com/SuryaSankar/listree
+pako for inflating compressed text - see https://github.com/nodeca/pako
+leaflet for generating GPS maps - see https://leafletjs.com/
+openstreetmaps for display maps - see https://www.openstreetmap.org/
