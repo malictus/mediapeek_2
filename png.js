@@ -142,17 +142,7 @@ async function getPNGdata(file) {
                     textValues.push(theText);
                     //dig into XMP text data to see if there are GPS coordinates
                     if (keyword.toUpperCase().includes("XMP")) {
-                        if ((theText.includes("exif:GPSLatitude=")) && (theText.includes("exif:GPSLongitude="))) {
-                            latstart = theText.indexOf("exif:GPSLatitude=\"") + 18;
-                            latend = theText.indexOf("\"", latstart);
-                            lat = theText.substring(latstart, latend);
-                            longstart = theText.indexOf("exif:GPSLongitude=\"") + 19;
-                            longend = theText.indexOf("\"", longstart);
-                            long = theText.substring(longstart, longend);
-                            //TODO - convert this format to decimal
-                            OSMLatitude = lat;
-                            OSMLongitude = long;
-                        }
+                        findGPSInExifText(theText); 
                     }
                 }
             } else if (chunktype == "pHYs" && length == 9) {

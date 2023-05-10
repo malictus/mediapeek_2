@@ -167,6 +167,34 @@ function populateStreetMap() {
     }
 }
 
+//search through a pile of Exif data in XMP format, pull out the GPS data if it exists, and enable our map
+function findGPSInExifText(text) {
+    if ((text.includes("exif:GPSLatitude=")) && (text.includes("exif:GPSLongitude="))) {
+        let latstart = text.indexOf("exif:GPSLatitude=\"") + 18;
+        let latend = text.indexOf("\"", latstart);
+        let lat = text.substring(latstart, latend);
+        let longstart = text.indexOf("exif:GPSLongitude=\"") + 19;
+        let longend = text.indexOf("\"", longstart);
+        let long = text.substring(longstart, longend);
+        //currently, the only example I have is this format: LATITUDE: 19,44.5023333N and LONGITUDE: 156,1.8778333W
+        //there are likely others
+        let latdegrees = lat.substring(0, lat.indexOf(","));
+        let longdegrees = long.substring(0, long.indexOf(","));
+        let latminutes = lat.substring(lat.indexOf(",") + 1, lat.length - 1);
+        let longminutes = long.substring(long.indexOf(",") + 1, long.length - 1);
+        let reallat = +latdegrees + (+latminutes / 60);
+        let reallong = +longdegrees + (+longminutes / 60);
+        if (lat.slice(-1) == "S") {
+            reallat = -reallat;
+        }
+        if (long.slice(-1) == "W") {
+            reallong = -reallong;
+        }
+        OSMLatitude = reallat;
+        OSMLongitude = reallong;
+    }
+}
+
 /******************************************************************************************************* */
 /**
  * HELPER UTILITIES
