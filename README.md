@@ -17,4 +17,4 @@ Uses the following bits
 * listree for displaying tree hierarchy - see https://github.com/SuryaSankar/listree
 * pako for inflating compressed text - see https://github.com/nodeca/pako
 * leaflet for generating GPS maps - see https://leafletjs.com/
-* openstreetmaps for display maps - see https://www.openstreetmap.org/
+* openstreetmaps for displaying maps - see https://www.openstreetmap.org/
