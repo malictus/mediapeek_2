@@ -80,6 +80,8 @@ async function getWAVdata(file) {
                     //add to our text lists
                     textNames.push("_PMX (XMP) Data");
                     textValues.push(val);
+                    //add to downloadable links
+                    addDownloadableLink("Extract XMP Metadata (XML)", val, "XMP Download For " + file.name + ".txt");
                 }
             } else {
                 //unknown chunk

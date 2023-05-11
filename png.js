@@ -140,9 +140,10 @@ async function getPNGdata(file) {
                         textNames.push("iTXt Chunk Text: " + keyword);
                     }
                     textValues.push(theText);
-                    //dig into XMP text data to see if there are GPS coordinates
+                    //dig into XMP text data to see if there are GPS coordinates and to create download link
                     if (keyword.toUpperCase().includes("XMP")) {
                         findGPSInExifText(theText); 
+                        addDownloadableLink("Extract XMP Metadata (XML)", theText, "XMP Download For " + file.name + ".txt");
                     }
                 }
             } else if (chunktype == "pHYs" && length == 9) {

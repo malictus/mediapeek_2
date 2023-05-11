@@ -187,6 +187,8 @@ async function getTIFFdata(file) {
                 if (idtag == 700) {
                     //XMP (XML) data; treat as text but NOT null-terminated (thus the "+1")
                     tagentry = await readTIFFTextTag(file, fieldcount + 1, fieldbyteoffset, labelfortag);
+                    //add this to downloadable links
+                    addDownloadableLink("Extract XMP Metadata (XML)", textValues.slice(-1), "XMP Download For " + file.name + ".txt");
                 } else if (idtag == 34665) {
                     //EXIF metadata; go and find those tags and read them
                     let exiflist = makeNewNode("TAG #34665 EXIF METADATA ");

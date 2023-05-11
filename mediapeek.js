@@ -125,6 +125,7 @@ function clearOldData() {
     OSMLatitude = 0;
     OSMLongitude = 0;
     document.getElementById('map').innerHTML = "";
+    document.getElementById('downloadlinks').innerHTML = "";
 }
 
 //populate the texts portion of the interface after a new file has been opened
@@ -193,6 +194,15 @@ function findGPSInExifText(text) {
         OSMLatitude = reallat;
         OSMLongitude = reallong;
     }
+}
+
+//add to the extracted text links on the page
+function addDownloadableLink(linkName, theText, theFileName) {
+    let aTag = document.createElement('a');
+    aTag.innerHTML = linkName;
+    aTag.href = "data:application/octet-stream," + encodeURIComponent(theText);
+    aTag.setAttribute("download", theFileName);
+    document.getElementById('downloadlinks').appendChild(aTag);
 }
 
 /******************************************************************************************************* */
