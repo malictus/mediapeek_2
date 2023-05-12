@@ -66,6 +66,9 @@ async function getDataFor(file) {
     } else if (thefiletype == "WAV") {
         document.getElementById('infotext').innerHTML = "This file is a WAV sound file.";
         await getWAVdata(file);
+    } else if (thefiletype == "JPG") {
+        document.getElementById('infotext').innerHTML = "This file is a JPG image file.";
+        await getJPGdata(file);
     } else {
         //file type isn't known or an error  
         document.getElementById('infotext').innerHTML = "This file is not a known file type.";
@@ -100,6 +103,8 @@ function figureOutFileTypeFor(aview) {
             return "TIFF";
         } else if (isWAV(aview)) {
             return "WAV";
+        } else if (isJPG(aview)) {
+            return "JPG";
         } else {
             return "unknown file type";
         }
