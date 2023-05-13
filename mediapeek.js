@@ -258,8 +258,8 @@ function makeNewTextEntry(fieldName, body) {
 
 //given a DataView object, look for the first null character and return its position
 //return the total length if no null character found
-function findNullSeparatorIn(dataview) {
-    counter = 0;
+function findNullSeparatorIn(dataview, startByte = 0) {
+    counter = startByte;
     foundit = false;
     while (!foundit && (counter < dataview.byteLength)) {
         if (dataview.getUint8(counter) == 0) {
@@ -268,6 +268,13 @@ function findNullSeparatorIn(dataview) {
         counter++;
     }
     return counter;
+}
+
+//read a null-terminated string from a dataview, or return the whole thing if none found
+function readNullTerminatedText(nullView, startByte = 0) {
+    let nullpos = findNullSeparatorIn(nullView, startByte);
+    let keyword = readText(nullView, startByte, nullpos - (1 + startByte));
+    return keyword;
 }
 
 //given a DataView object, read (UTF-8) text from it
