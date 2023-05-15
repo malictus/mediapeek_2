@@ -1,4 +1,8 @@
-//constant array that represents all TIFF tags we know so far
+/**
+ * TIFF FILE STUFF GOES HERE, PLUS ANYTHING EXIF RELATED EVEN IF IN OTHER FILE TYPES (JPG, etc)
+ */
+
+//array of all TIFF and EXIF tag labels we know so far
 const tifftags = [
     { "tag": 1, "name": "GPS Latitude Ref" },
     { "tag": 2, "name": "GPS Latitude" },
@@ -93,16 +97,12 @@ const tifftags = [
     { "tag": 42035, "name": "Lens Make" },
     { "tag": 42036, "name": "Lens Model" },
 ];
-//negative markers for latitude and longitude
+
+//use these markers to track negative values for global latitude and longitude
 let negLat = false;
 let negLong = false;
 
-/************************************************************************************************************ */
-/**
- * TIFF functions
- * 
- * */
-//check to see if the beginning of a file (a DataView object) is the TIFF header
+//check to see if the beginning of a file (as a DataView object) is the TIFF header
 function isTIFF(aview) {
     const initTIFFLE = [73, 73, 42, 0];     //little endian version
     const initTIFFBE = [77, 77, 0, 42];     //big endian version
@@ -121,188 +121,101 @@ function isTIFF(aview) {
     return false;
 }
 
-//we've confirmed it's a TIFF file, now grab all the metadata out of the file chunk by chunk
+//read the data out of a TIFF file
 async function getTIFFdata(file) {
     try {
-        //reset these
+        //reset these whenever we start, just in case
         negLat = false;
         negLong = false;
         //get the UI tree element built and the root UL element
         let fileinfolist = buildTreeRoot();
         let rootnode = makeNewNode("TIFF Image File Tree (Click to Expand)");
         fileinfolist.appendChild(rootnode);
-        //find endian-ness and offset to first IFD
-        bytepos = 2;
-        fileend = false;
-        abuff = await file.slice(bytepos, bytepos + 6).arrayBuffer();
-        aview = new DataView(abuff);
-        endiantag = aview.getUint8(0);      //just checking the first of the two bytes here
-        isLittleEndian = true;
+        //find endian-ness for this file, and the byte offset to the first IFD
+        let abuff = await file.slice(2, 8).arrayBuffer();
+        let aview = new DataView(abuff);
+        //first, find the endian
+        let endiantag = aview.getUint8(0);      //just checking the first of the two bytes here is all that's needed
+        let isLittleEndian = true;
         if (endiantag == 0) {
             isLittleEndian = false;
         }
         textNames.push("Is Little Endian?");
         textValues.push(isLittleEndian);
-        li = makeNewBottomNode("Is Little Endian: " + isLittleEndian);
-        rootnode.children[1].appendChild(li);
-        offsettoIFD = aview.getUint32(2, isLittleEndian);
-        li = makeNewBottomNode("Offset To First IFD: " + offsettoIFD + " bytes");
-        rootnode.children[1].appendChild(li);
-        parsemore = true;
-        let pagecount = 1;
-        //read each IFD in the document (usually one, but sometimes more)
-        while (parsemore) {
-            //read a IFD for a single image
-            //first a node for this image file directory
-            let sublist = makeNewNode("Image File Directory " + pagecount);
-            rootnode.children[1].appendChild(sublist);
-            //now read two-byte count of number of entries
-            abuff = await file.slice(offsettoIFD, offsettoIFD + 2).arrayBuffer();
-            aview = new DataView(abuff);
-            numentries = aview.getUint16(0, isLittleEndian);
-            sublist.children[1].appendChild(makeNewBottomNode("Number of Tags: " + numentries));
-            //read the entire ifd dir plus the offset to next one
-            abuff = await file.slice(offsettoIFD + 2, offsettoIFD + 2 + (numentries * 12) + 4).arrayBuffer();
-            aview = new DataView(abuff);
-            tagcount = 0;
-            while (tagcount < numentries) {
-                //read each tag entry in this IFD
-                offset = tagcount * 12;
-                idtag = aview.getUint16(offset, isLittleEndian);
-                fieldtype = aview.getUint16(offset + 2, isLittleEndian);
-                fieldcount = aview.getUint32(offset + 4, isLittleEndian);
-                fieldbyteoffset = aview.getUint32(offset + 8, isLittleEndian); // this might also be the value, depending on the tag
-                tagentry = null;
-                labelfortag = "TAG #" + idtag;
-                if (pagecount > 1) {
-                    labelfortag = "Image " + pagecount + " - " + labelfortag;
-                }
-                let thenode = tifftags.find(({ tag }) => tag === idtag);
-                if (!(thenode === undefined)) {
-                    //use tag name, if we know it
-                    labelfortag = labelfortag + " (" + thenode.name + ")";
-                }
-                //can we parse this further?
-                //first, special cases
-                if (idtag == 700) {
-                    //XMP (XML) data; treat as text but NOT null-terminated (thus the "+1")
-                    tagentry = await readTIFFTextTag(file, fieldcount + 1, fieldbyteoffset, labelfortag);
-                    //add this to downloadable links
-                    addDownloadableLink("Extract XMP Metadata (XML)", textValues.slice(-1), "XMP Download For " + file.name + ".txt");
-                } else if (idtag == 34665) {
-                    //EXIF metadata; go and find those tags and read them
-                    let exiflist = makeNewNode("TAG #34665 EXIF METADATA ");
-                    sublist.children[1].appendChild(exiflist);
-                    let exifstart = aview.getUint32(offset + 8, isLittleEndian);
-                    await readEXIF(exifstart, file, isLittleEndian, exiflist);
-                } else if (idtag == 34853) {
-                    //EXIF GPS metadata; go and find those tags and read them
-                    let gpslist = makeNewNode("TAG #34853 EXIF (GPS) METADATA ");
-                    sublist.children[1].appendChild(gpslist);
-                    let gpsstart = aview.getUint32(offset + 8, isLittleEndian);
-                    await readEXIF(gpsstart, file, isLittleEndian, gpslist);
-                } else {
-                    //process based on field type
-                    switch (fieldtype) {
-                        case 2:
-                            //if four bytes or less, read directly from here
-                            if (fieldcount < 5) {
-                                tagentry = await readTIFFTextTag(file, fieldcount, offsettoIFD +2 + offset + 8, labelfortag);
-                            } else {
-                                //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
-                                tagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag);
-                            }
-                            break;
-                        case 3:
-                            //16 bit unsigned; display it if there's only one
-                            if (fieldcount == 1) {
-                                theval = aview.getUint16(offset + 8, isLittleEndian);
-                                tagentry = makeNewBottomNode(labelfortag + ": " + theval);
-                                textNames.push(labelfortag);
-                                textValues.push(theval);
-                            } else {
-                                tagentry = makeNewBottomNode(labelfortag);
-                            }
-                            break;
-                        case 4:
-                            //32 bit unsigned; display it if there's only one
-                            if (fieldcount == 1) {
-                                theval = aview.getUint32(offset + 8, isLittleEndian);
-                                tagentry = makeNewBottomNode(labelfortag + ": " + theval);
-                                textNames.push(labelfortag);
-                                textValues.push(theval);
-                            } else {
-                                tagentry = makeNewBottomNode(labelfortag);
-                            }
-                            break;
-                        case 5:
-                            //fractional value; go read it and display it if there's only one
-                            if (fieldcount == 1) {
-                                let subarea = aview.getUint32(offset + 8, isLittleEndian);
-                                let subbuff = await file.slice(subarea, subarea + 8).arrayBuffer();
-                                let subview = new DataView(subbuff);
-                                let numerator = subview.getUint32(0, isLittleEndian);
-                                let denominator = subview.getUint32(4, isLittleEndian);
-                                tagentry = makeNewBottomNode(labelfortag + ": " + numerator + "/" + denominator);
-                                textNames.push(labelfortag);
-                                textValues.push(numerator + "/" + denominator);
-                            } else {
-                                tagentry = makeNewBottomNode(labelfortag);
-                            }
-                            break;
-                        default:
-                            tagentry = makeNewBottomNode(labelfortag);
-                    }
-                }
-                if (tagentry != null) {
-                    sublist.children[1].appendChild(tagentry);
-                }
-                tagcount++;
-            }
-            //is there another page?
-            offsettonext = aview.getUint32((numentries * 12), isLittleEndian);
-            if (offsettonext != 0) {
-                offsettoIFD = offsettonext;
-                pagecount++;
-            } else {
-                parsemore = false;
-            }
-        }
+        rootnode.children[1].appendChild(makeNewBottomNode("Is Little Endian: " + isLittleEndian));
+        //now, find the offset to the first IFD
+        let offsettoIFD = aview.getUint32(2, isLittleEndian);
+        rootnode.children[1].appendChild(makeNewBottomNode("Offset To First IFD: " + offsettoIFD + " bytes"));
+        //now, start reading IFD's
+        await readTIFFIFDs(file, offsettoIFD, rootnode, isLittleEndian);
     }
     catch (err) {
-    console.log(err);
+        console.log(err);
     }
 }
 
-//helper function to read EXIF extension metadata
-async function readEXIF(exifstart, file, isLittleEndian, exiflist) {
-    //read two-byte count of number of entries
-    let exifbuff = await file.slice(exifstart, exifstart + 2).arrayBuffer();
-    let exifview = new DataView(exifbuff);
-    let exifnumentries = exifview.getUint16(0, isLittleEndian);
-    let abuff = await file.slice(exifstart + 2, exifstart + 2 + (exifnumentries * 12)).arrayBuffer();
-    let aview = new DataView(abuff);
+//read IFD's from a TIFF file or an EXIF chunk if other kind of file
+async function readTIFFIFDs(file, offsettoIFD, rootnode, isLittleEndian, offsetInFile = 0, isTIFF = true) {
+    let parsemore = true;
+    console.log("start READTIFF");
+    //read each IFD 
+    //STILL MESSED UP
+    while (parsemore) {
+        console.log("start a IFD");
+        //make a node for this image file directory
+        let sublist = makeNewNode("Image File Directory ");
+        rootnode.children[1].appendChild(sublist);
+        //read the number of entries in this one
+        let abuff = await file.slice(offsettoIFD + offsetInFile, offsettoIFD + 2 + offsetInFile).arrayBuffer();
+        let aview = new DataView(abuff);
+        let numentries = aview.getUint16(0, isLittleEndian);
+        console.log("!!!" + numentries + " " + offsettoIFD);
+        sublist.children[1].appendChild(makeNewBottomNode("Number of Tags: " + numentries));
+        //read the entire ifd dir plus the offset to next one
+        abuff = await file.slice(offsettoIFD + 2 + offsetInFile, offsettoIFD + 2 + offsetInFile + (numentries * 12) + 4).arrayBuffer();
+        aview = new DataView(abuff);
+        await readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, numentries, offsetInFile);
+        if (isTIFF) {
+            //is there another IFD?
+            console.log("about to end a IFD");
+            let offsettonext = aview.getUint32((numentries * 12), isLittleEndian);
+            if (offsettonext != 0) {
+                offsettoIFD = offsettonext + offsetInFile;
+            } else {
+                parsemore = false;
+            }
+        } else {
+            parsemore = false;
+        }
+        console.log("end a IFD");
+    }
+    console.log("end READTIFF");
+}
+
+//read IFD tags in a single IFD (plus any sub-IFD's we find)
+async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, numentries, offsetToFile = 0) {    
     let tagcount = 0;
-    while (tagcount < exifnumentries) {
-        //read each tag entry 
+    console.log("another level " + offsettoIFD);
+    while (tagcount < numentries) {
+        //read a tag entry
         let offset = tagcount * 12;
-        let idtag = aview.getUint16(offset, isLittleEndian);
+        //read the tag info
+        let idtag = aview.getUint16(offset, isLittleEndian); 
         let fieldtype = aview.getUint16(offset + 2, isLittleEndian);
         let fieldcount = aview.getUint32(offset + 4, isLittleEndian);
         let fieldbyteoffset = aview.getUint32(offset + 8, isLittleEndian); // this might also be the value, depending on the tag
-        let exiftagentry = null;
+        console.log(idtag + "," + fieldtype + "," + fieldcount + "," + fieldbyteoffset + "," + tagcount + "," + numentries);
+        let tagentry = null;
         let labelfortag = "TAG #" + idtag;
         let thenode = tifftags.find(({ tag }) => tag === idtag);
         if (!(thenode === undefined)) {
             //use tag name, if we know it
             labelfortag = labelfortag + " (" + thenode.name + ")";
         }
-        //can we parse this further?
-        //first special cases
-        if (((idtag == 2) || (idtag ==4)) && (fieldcount == 3) && (fieldtype = 5)) {
+        //first, special cases
+        if (((idtag == 2) || (idtag == 4)) && (fieldcount == 3) && (fieldtype = 5)) {
             //calculate the latitude and longitude
-            let subarea = aview.getUint32(offset + 8, isLittleEndian);
-            let subbuff = await file.slice(subarea, subarea + 24).arrayBuffer();
+            let subbuff = await file.slice(fieldbyteoffset + offsetToFile, fieldbyteoffset + 24 + offsetToFile).arrayBuffer();    //read in the 6 numbers
             let subview = new DataView(subbuff);
             let numerator1 = subview.getUint32(0, isLittleEndian);
             let denominator1 = subview.getUint32(4, isLittleEndian);
@@ -310,7 +223,7 @@ async function readEXIF(exifstart, file, isLittleEndian, exiflist) {
             let denominator2 = subview.getUint32(12, isLittleEndian);
             let numerator3 = subview.getUint32(16, isLittleEndian);
             let denominator3 = subview.getUint32(20, isLittleEndian);
-            exiftagentry = makeNewBottomNode(labelfortag + ": " + (numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
+            tagentry = makeNewBottomNode(labelfortag + ": " + (numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
             textNames.push(labelfortag);
             textValues.push((numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
             if (idtag == 2) {
@@ -318,15 +231,43 @@ async function readEXIF(exifstart, file, isLittleEndian, exiflist) {
             } else if (idtag == 4) {
                 OSMLongitude = (numerator1 / denominator1) + ((numerator2 / denominator2) / 60) + ((numerator3 / denominator3) / 3600);
             }
+        } else if (idtag == 700) {
+            //XMP (XML) data; treat as text but NOT null-terminated (thus the "+1")
+            tagentry = await readTIFFTextTag(file, fieldcount + 1, fieldbyteoffset + offsetToFile, labelfortag);
+            //add this to downloadable links (slice(-1) is a hack to grab the last value we just in above)
+            addDownloadableLink("Extract XMP Metadata (XML)", textValues.slice(-1), "XMP Download For " + file.name + ".txt");
+        } else if ((idtag == 34665) || (idtag == 34853)) {
+            //EXIF metadata; go and find those tags and read them
+            let exiflist;
+            if (idtag == 34665) {
+                exiflist = makeNewNode("TAG #34665 EXIF METADATA ");
+            } else {
+                exiflist = makeNewNode("TAG #34853 EXIF (GPS) METADATA ");
+            } 
+            sublist.children[1].appendChild(exiflist);
+            let exifstart = aview.getUint32(offset + 8, isLittleEndian);
+            //read two-byte count of number of entries
+            let exifbuff = await file.slice(exifstart + offsetToFile, exifstart + 2 + offsetToFile).arrayBuffer();
+            let exifview = new DataView(exifbuff);
+            let exifnumentries = exifview.getUint16(0, isLittleEndian);
+            console.log("EXIF NUM " + exifnumentries);
+            exifbuff = await file.slice(exifstart + 2 + offsetToFile, exifstart + 2 + offsetToFile + (exifnumentries * 12)).arrayBuffer();
+            exifview = new DataView(exifbuff);
+            //recurse to grab these additional EXIF tags
+            await readIFDTags(file, exifview, exifstart, exiflist, isLittleEndian, exifnumentries, offsetToFile); 
         } else {
+            //process based on field type
             switch (fieldtype) {
                 case 2:
+                    //if four bytes or less, read directly from here
                     if (fieldcount < 5) {
                         if (idtag == 1) {
                             //get latitude marker - technically we now read this value twice, but I think it's OK
                             latTest = readText(aview, offset + 8, 1);
                             if (latTest == "S") {
                                 negLat = true;
+                            } else {
+                                negLat = false;
                             }
                         }
                         if (idtag == 3) {
@@ -334,56 +275,60 @@ async function readEXIF(exifstart, file, isLittleEndian, exiflist) {
                             longTest = readText(aview, offset + 8, 1);
                             if (longTest == "W") {
                                 negLong = true;
+                            } else {
+                                negLong = false;
                             }
                         }
-                        exiftagentry = await readTIFFTextTag(file, fieldcount, exifstart + 2 + offset + 8, labelfortag);
+                        tagentry = await readTIFFTextTag(file, fieldcount, offsettoIFD + 2 + offset + 8 + offsetToFile, labelfortag);
                     } else {
                         //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
-                        exiftagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag);
+                        tagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset + offsetToFile, labelfortag);
                     }
                     break;
                 case 3:
                     //16 bit unsigned; display it if there's only one
                     if (fieldcount == 1) {
                         theval = aview.getUint16(offset + 8, isLittleEndian);
-                        exiftagentry = makeNewBottomNode(labelfortag + ": " + theval);
+                        tagentry = makeNewBottomNode(labelfortag + ": " + theval);
                         textNames.push(labelfortag);
                         textValues.push(theval);
                     } else {
-                        exiftagentry = makeNewBottomNode(labelfortag);
+                        tagentry = makeNewBottomNode(labelfortag);
                     }
                     break;
                 case 4:
                     //32 bit unsigned; display it if there's only one
                     if (fieldcount == 1) {
                         theval = aview.getUint32(offset + 8, isLittleEndian);
-                        exiftagentry = makeNewBottomNode(labelfortag + ": " + theval);
+                        tagentry = makeNewBottomNode(labelfortag + ": " + theval);
                         textNames.push(labelfortag);
                         textValues.push(theval);
                     } else {
-                        exiftagentry = makeNewBottomNode(labelfortag);
+                        tagentry = makeNewBottomNode(labelfortag);
                     }
                     break;
                 case 5:
                     //fractional value; go read it and display it if there's only one
                     if (fieldcount == 1) {
                         let subarea = aview.getUint32(offset + 8, isLittleEndian);
-                        let subbuff = await file.slice(subarea, subarea + 8).arrayBuffer();
+                        let subbuff = await file.slice(subarea + offsetToFile, subarea + offsetToFile + 8).arrayBuffer();
                         let subview = new DataView(subbuff);
                         let numerator = subview.getUint32(0, isLittleEndian);
                         let denominator = subview.getUint32(4, isLittleEndian);
-                        exiftagentry = makeNewBottomNode(labelfortag + ": " + numerator + "/" + denominator);
+                        tagentry = makeNewBottomNode(labelfortag + ": " + numerator + "/" + denominator);
                         textNames.push(labelfortag);
                         textValues.push(numerator + "/" + denominator);
                     } else {
-                        exiftagentry = makeNewBottomNode(labelfortag);
+                        tagentry = makeNewBottomNode(labelfortag);
                     }
                     break;
                 default:
-                    exiftagentry = makeNewBottomNode(labelfortag);
+                    tagentry = makeNewBottomNode(labelfortag);
             }
         }
-        exiflist.children[1].appendChild(exiftagentry);
+        if (tagentry != null) {
+            sublist.children[1].appendChild(tagentry);
+        }
         tagcount++;
     }
     //now that all tags are read, adjust for negative latitude and longitude values, if applicable
@@ -394,6 +339,38 @@ async function readEXIF(exifstart, file, isLittleEndian, exiflist) {
         if ((negLong == true) && (OSMLongitude > 0)) {
             OSMLongitude = -OSMLongitude;
         }
+    }
+}    
+ 
+//read an EXIF chunk of a file; this is called from NON-TIFF files like JPG that have an EXIF chunk
+async function parseEXIFFile(file, start, nodeString) {
+    try {
+        //reset these
+        negLat = false;
+        negLong = false;
+        let rootnode = makeNewNode(nodeString);
+        //find endian-ness and offset to first IFD
+        bytepos = 6;    //skip the first 6 ID bytes that just say "Exif" with two zero bytes after
+        let abuff = await file.slice(bytepos + start, bytepos + start + 18).arrayBuffer();
+        let aview = new DataView(abuff);
+        let endiantag = aview.getUint16(0);
+        let isLittleEndian;
+        if (endiantag === 0x4949) {
+            isLittleEndian = true;
+        } else if (endiantag === 0x4D4D) {
+            isLittleEndian = false;
+        } else {
+            throw new Error('Invalid TIFF header');
+        }
+        let checker = aview.getUint16(2, isLittleEndian);
+        if (checker !== 0x002A) {
+            throw new Error('Invalid TIFF data');
+        }
+        let offsettoIFD = aview.getUint32(4, isLittleEndian);
+        await readTIFFIFDs(file, offsettoIFD, rootnode, isLittleEndian, bytepos + start, false);
+        return rootnode;
+    } catch (err) {
+        console.log(err);
     }
 }
 
@@ -411,6 +388,7 @@ async function readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag) {
         }
         textNames.push(labelfortag);
         textValues.push(val);
+        console.log("just pushed " + val);
     } else {
         subentry = makeNewBottomNode(labelfortag);
         textNames.push(labelfortag);

@@ -110,7 +110,19 @@ async function getJPGdata(file) {
                 default:
                     markerText = "Unknown";
             }
-            if (markerText != "skip") {
+            //parse nodes we can parse
+            if ((marker == 0xE1) && (subName.toUpperCase() == "EXIF")) {
+                //EXIF sub-file; parse appropriately
+                try {
+                    let exiflist = await parseEXIFFile(file, byteoffset + 4, "Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
+                    rootnode.children[1].appendChild(exiflist);
+                } catch (err) {
+                    console.log(err);
+                    let li = makeNewBottomNode("Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
+                    rootnode.children[1].appendChild(li);
+                }
+            } else if (markerText != "skip") {
+                //and just display the rest
                 let li = makeNewBottomNode("Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
                 rootnode.children[1].appendChild(li);
             }
