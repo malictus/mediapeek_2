@@ -16,7 +16,7 @@ async function getWAVdata(file) {
     try {
         //get the UI tree element built and the root UL element
         let fileinfolist = buildTreeRoot();
-        let rootnode = makeNewNode("WAV Sound File Tree (Click to Expand)");
+        let rootnode = makeNewNode("WAV Sound File Tree");
         fileinfolist.appendChild(rootnode);
         //for now, we are ignoring overall RIFF chunk size, and just reading each individual chunk until EOF reached
         bytepos = 12;

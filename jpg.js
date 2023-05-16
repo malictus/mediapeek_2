@@ -21,7 +21,7 @@ async function getJPGdata(file) {
     try {
         //get the UI tree element built and the root UL element
         let fileinfolist = buildTreeRoot();
-        let rootnode = makeNewNode("JPG Image File Tree (Click to Expand)");
+        let rootnode = makeNewNode("JPG Image File Tree");
         fileinfolist.appendChild(rootnode);
         let byteoffset = 2;
         while (byteoffset < file.size) {

@@ -22,7 +22,7 @@ async function getPNGdata(file) {
     try {
         //get the UI tree element built and the root UL element
         let fileinfolist = buildTreeRoot();
-        let rootnode = makeNewNode("PNG Image File Tree (Click to Expand)");
+        let rootnode = makeNewNode("PNG Image File Tree");
         fileinfolist.appendChild(rootnode);
         //read in 8 bytes at the beginning of each chunk
         bytepos = 8; //initially start reading after the 8-byte PNG header

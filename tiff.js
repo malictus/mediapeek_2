@@ -4,6 +4,7 @@
 
 //array of all TIFF and EXIF tag labels we know so far
 const tifftags = [
+    { "tag": 0, "name": "GPS Version ID" },
     { "tag": 1, "name": "GPS Latitude Ref" },
     { "tag": 2, "name": "GPS Latitude" },
     { "tag": 3, "name": "GPS Longitude Ref" },
@@ -45,7 +46,8 @@ const tifftags = [
     { "tag": 338, "name": "Extra Samples" },
     { "tag": 339, "name": "Sample Format" },
     { "tag": 347, "name": "JPEG Tables" },
-    { "tag": 530, "name": "YCbCrSubSampling" },    
+    { "tag": 530, "name": "YCbCrSubSampling" },  
+    { "tag": 531, "name": "YCbCrPositioning" },  
     { "tag": 700, "name": "XMP Metadata" },
     { "tag": 33434, "name": "Exposure Time" },
     { "tag": 33437, "name": "F Number" },
@@ -62,13 +64,17 @@ const tifftags = [
     { "tag": 36881, "name": "Offset Time Original" },
     { "tag": 36882, "name": "Offset Time Digitized" },
     { "tag": 37121, "name": "Components Configuration" },
+    { "tag": 37122, "name": "Compressed Bits Per Pixel" },
     { "tag": 37377, "name": "Shutter Speed Value" },
     { "tag": 37378, "name": "Aperture Value" },
     { "tag": 37379, "name": "Brightness Value" },
     { "tag": 37381, "name": "Max Aperture Value" },
     { "tag": 37382, "name": "Subject Distance" },
     { "tag": 37383, "name": "Metering Mode" },
+    { "tag": 37384, "name": "Light Source" },
+    { "tag": 37500, "name": "Maker Note" },
     { "tag": 37510, "name": "User Comment" },
+    { "tag": 37520, "name": "SubsecTime" },
     { "tag": 37521, "name": "Subsec Time Original" },
     { "tag": 37522, "name": "Subsec Time Digitized" },
     { "tag": 37380, "name": "Exposure Bias Value" },
@@ -79,10 +85,14 @@ const tifftags = [
     { "tag": 40961, "name": "Color Space" },
     { "tag": 40962, "name": "Pixel X Dimension" },
     { "tag": 40963, "name": "Pixel Y Dimension" },
+    { "tag": 40965, "name": "Interoperability IFD" },
+    { "tag": 41483, "name": "Flash Energy" },
     { "tag": 41486, "name": "Focal Plane X Resolution" },
     { "tag": 41487, "name": "Focal Plane Y Resolution" },
     { "tag": 41488, "name": "Focal Plane Resolution Unit" },
+    { "tag": 41493, "name": "Exposure Index" }, 
     { "tag": 41495, "name": "Sensing Method" },
+    { "tag": 41728, "name": "File Source" }, 
     { "tag": 41729, "name": "Scene Type" },
     { "tag": 41985, "name": "Custom Rendered" },
     { "tag": 41986, "name": "Exposure Mode" },
@@ -90,12 +100,15 @@ const tifftags = [
     { "tag": 41988, "name": "Digital Zoom Ratio" },
     { "tag": 41989, "name": "Focal Length In 35mm Film" },
     { "tag": 41990, "name": "Scene Capture Type" },
+    { "tag": 41991, "name": "Gain Control" }, 
     { "tag": 41992, "name": "Contrast" },
     { "tag": 41993, "name": "Saturation" },
     { "tag": 41994, "name": "Sharpness" },
     { "tag": 41996, "name": "Subject Distance Range" },
+    { "tag": 42016, "name": "Image Unique ID" },
     { "tag": 42035, "name": "Lens Make" },
     { "tag": 42036, "name": "Lens Model" },
+    { "tag": 50341, "name": "PrintImageMatching" },    
 ];
 
 //use these markers to track negative values for global latitude and longitude
@@ -129,7 +142,7 @@ async function getTIFFdata(file) {
         negLong = false;
         //get the UI tree element built and the root UL element
         let fileinfolist = buildTreeRoot();
-        let rootnode = makeNewNode("TIFF Image File Tree (Click to Expand)");
+        let rootnode = makeNewNode("TIFF Image File Tree");
         fileinfolist.appendChild(rootnode);
         //find endian-ness for this file, and the byte offset to the first IFD
         let abuff = await file.slice(2, 8).arrayBuffer();
@@ -157,27 +170,26 @@ async function getTIFFdata(file) {
 //read IFD's from a TIFF file or an EXIF chunk if other kind of file
 async function readTIFFIFDs(file, offsettoIFD, rootnode, isLittleEndian, offsetInFile = 0, isTIFF = true) {
     let parsemore = true;
-    console.log("start READTIFF");
     //read each IFD 
-    //STILL MESSED UP
     while (parsemore) {
-        console.log("start a IFD");
-        //make a node for this image file directory
-        let sublist = makeNewNode("Image File Directory ");
-        rootnode.children[1].appendChild(sublist);
+        let sublist;
+        //make a node for this image file directory if this is a TIFF file
+        if (isTIFF) {
+            sublist = makeNewNode("Image File Directory ");
+            rootnode.children[1].appendChild(sublist);
+        } else {
+            sublist = rootnode;
+        }
         //read the number of entries in this one
         let abuff = await file.slice(offsettoIFD + offsetInFile, offsettoIFD + 2 + offsetInFile).arrayBuffer();
         let aview = new DataView(abuff);
         let numentries = aview.getUint16(0, isLittleEndian);
-        console.log("!!!" + numentries + " " + offsettoIFD);
-        sublist.children[1].appendChild(makeNewBottomNode("Number of Tags: " + numentries));
         //read the entire ifd dir plus the offset to next one
         abuff = await file.slice(offsettoIFD + 2 + offsetInFile, offsettoIFD + 2 + offsetInFile + (numentries * 12) + 4).arrayBuffer();
         aview = new DataView(abuff);
         await readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, numentries, offsetInFile);
         if (isTIFF) {
-            //is there another IFD?
-            console.log("about to end a IFD");
+            //is there another IFD? only applies in a TIFF file, not JPG, etc.
             let offsettonext = aview.getUint32((numentries * 12), isLittleEndian);
             if (offsettonext != 0) {
                 offsettoIFD = offsettonext + offsetInFile;
@@ -187,15 +199,12 @@ async function readTIFFIFDs(file, offsettoIFD, rootnode, isLittleEndian, offsetI
         } else {
             parsemore = false;
         }
-        console.log("end a IFD");
     }
-    console.log("end READTIFF");
 }
 
 //read IFD tags in a single IFD (plus any sub-IFD's we find)
 async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, numentries, offsetToFile = 0) {    
     let tagcount = 0;
-    console.log("another level " + offsettoIFD);
     while (tagcount < numentries) {
         //read a tag entry
         let offset = tagcount * 12;
@@ -204,7 +213,6 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
         let fieldtype = aview.getUint16(offset + 2, isLittleEndian);
         let fieldcount = aview.getUint32(offset + 4, isLittleEndian);
         let fieldbyteoffset = aview.getUint32(offset + 8, isLittleEndian); // this might also be the value, depending on the tag
-        console.log(idtag + "," + fieldtype + "," + fieldcount + "," + fieldbyteoffset + "," + tagcount + "," + numentries);
         let tagentry = null;
         let labelfortag = "TAG #" + idtag;
         let thenode = tifftags.find(({ tag }) => tag === idtag);
@@ -224,8 +232,6 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
             let numerator3 = subview.getUint32(16, isLittleEndian);
             let denominator3 = subview.getUint32(20, isLittleEndian);
             tagentry = makeNewBottomNode(labelfortag + ": " + (numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
-            textNames.push(labelfortag);
-            textValues.push((numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
             if (idtag == 2) {
                 OSMLatitude = (numerator1 / denominator1) + ((numerator2 / denominator2) / 60) + ((numerator3 / denominator3) / 3600);
             } else if (idtag == 4) {
@@ -250,7 +256,6 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
             let exifbuff = await file.slice(exifstart + offsetToFile, exifstart + 2 + offsetToFile).arrayBuffer();
             let exifview = new DataView(exifbuff);
             let exifnumentries = exifview.getUint16(0, isLittleEndian);
-            console.log("EXIF NUM " + exifnumentries);
             exifbuff = await file.slice(exifstart + 2 + offsetToFile, exifstart + 2 + offsetToFile + (exifnumentries * 12)).arrayBuffer();
             exifview = new DataView(exifbuff);
             //recurse to grab these additional EXIF tags
@@ -290,8 +295,6 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
                     if (fieldcount == 1) {
                         theval = aview.getUint16(offset + 8, isLittleEndian);
                         tagentry = makeNewBottomNode(labelfortag + ": " + theval);
-                        textNames.push(labelfortag);
-                        textValues.push(theval);
                     } else {
                         tagentry = makeNewBottomNode(labelfortag);
                     }
@@ -301,8 +304,6 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
                     if (fieldcount == 1) {
                         theval = aview.getUint32(offset + 8, isLittleEndian);
                         tagentry = makeNewBottomNode(labelfortag + ": " + theval);
-                        textNames.push(labelfortag);
-                        textValues.push(theval);
                     } else {
                         tagentry = makeNewBottomNode(labelfortag);
                     }
@@ -316,8 +317,6 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
                         let numerator = subview.getUint32(0, isLittleEndian);
                         let denominator = subview.getUint32(4, isLittleEndian);
                         tagentry = makeNewBottomNode(labelfortag + ": " + numerator + "/" + denominator);
-                        textNames.push(labelfortag);
-                        textValues.push(numerator + "/" + denominator);
                     } else {
                         tagentry = makeNewBottomNode(labelfortag);
                     }
@@ -388,7 +387,6 @@ async function readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag) {
         }
         textNames.push(labelfortag);
         textValues.push(val);
-        console.log("just pushed " + val);
     } else {
         subentry = makeNewBottomNode(labelfortag);
         textNames.push(labelfortag);

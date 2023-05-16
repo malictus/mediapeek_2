@@ -22,8 +22,10 @@ function listree() {
     const collapsedClass = "collapsed";
     const subMenuHeadings = document.getElementsByClassName(subMenuHeadingClass);
     Array.from(subMenuHeadings).forEach(function (subMenuHeading) {
-        subMenuHeading.classList.add(collapsedClass);
-        subMenuHeading.nextElementSibling.style.display = "none";
+        //I prefer to start with it open
+        //subMenuHeading.classList.add(collapsedClass);
+        subMenuHeading.classList.add(expandedClass);
+        //subMenuHeading.nextElementSibling.style.display = "none";
         subMenuHeading.addEventListener('click', function (event) {
             event.preventDefault();
             const subMenuList = event.target.nextElementSibling;
