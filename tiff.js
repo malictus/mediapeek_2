@@ -377,9 +377,9 @@ async function parseEXIFFile(file, start, nodeString) {
 async function readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag) {
     if (fieldcount < MAX_TEXT_LENGTH_TEXTS) {
         //go grab the string that represents the text
-        tbuff = await file.slice(fieldbyteoffset, fieldbyteoffset + (fieldcount - 1)).arrayBuffer();
-        tview = new DataView(tbuff);
-        val = readText(tview, 0, (fieldcount - 1));
+        let tbuff = await file.slice(fieldbyteoffset, fieldbyteoffset + (fieldcount - 1)).arrayBuffer();
+        let tview = new DataView(tbuff);
+        let val = readText(tview, 0, (fieldcount - 1));
         if (fieldcount < MAX_TEXT_LENGTH_TREE) {
             subentry = makeNewBottomNode(labelfortag + ": " + val);
         } else {

@@ -210,6 +210,8 @@ function addDownloadableLink(linkName, theText, theFileName) {
     aTag.href = "data:application/octet-stream," + encodeURIComponent(theText);
     aTag.setAttribute("download", theFileName);
     document.getElementById('downloadlinks').appendChild(aTag);
+    let aspace = document.createElement('br');
+    document.getElementById('downloadlinks').append(aspace);
 }
 
 /******************************************************************************************************* */

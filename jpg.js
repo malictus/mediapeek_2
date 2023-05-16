@@ -6,7 +6,7 @@
 //check to see if the beginning of a file (a DataView object) is the JPG header
 function isJPG(aview) {
     const initJPG = [0xFF, 0xD8, 0xFF];
-    counter = 0;
+    let counter = 0;
     while (counter < 3) {
         if (initJPG[counter] != aview.getUint8(counter)) {
             return false;
@@ -30,6 +30,7 @@ async function getJPGdata(file) {
             if (aview.getUint8(0) != 0xFF) {
                 throw new Error("Invalid Byte Found ");
             }
+            //read markers
             let marker = aview.getUint8(1);
             let newlength = aview.getUint16(2, false);
             let subName = readNullTerminatedText(aview, 4);
@@ -43,8 +44,10 @@ async function getJPGdata(file) {
                     markerText = "APP0" + " - " + subName;
                     break;
                 case 0xE1:
-                    if (subName.startsWith("http://ns.adobe.com/xap")) {
+                    if ((subName.startsWith("http://ns.adobe.com/xa"))) {
                         markerText = "APP1 - XMP";
+                    } else if ((subName.startsWith("http://ns.adobe.com/xm"))) {
+                        markerText = "APP1 - XMP Extension";
                     } else {
                         markerText = "APP1" + " - " + subName;
                     }
@@ -117,10 +120,20 @@ async function getJPGdata(file) {
                     let exiflist = await parseEXIFFile(file, byteoffset + 4, "Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
                     rootnode.children[1].appendChild(exiflist);
                 } catch (err) {
-                    console.log(err);
                     let li = makeNewBottomNode("Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
                     rootnode.children[1].appendChild(li);
                 }
+            } else if ((marker == 0xE1) && (subName.startsWith("http://ns.adobe.com/xa"))) {
+                //read in a chunk of text
+                let sublist = makeNewNode("Marker #" + marker + " - XMP XML Data (" + newlength + " bytes" + ")");
+                rootnode.children[1].appendChild(sublist);
+                sublist.children[1].appendChild(await readJPGText(file, newlength - (subName.length + 4), byteoffset + subName.length + 5, "XMP XML"));
+            } else if ((marker == 0xE1) && (subName.startsWith("http://ns.adobe.com/xm"))) {
+                //read in a chunk of text
+                let sublist = makeNewNode("Marker #" + marker + " - XMP XML Extension Data (" + newlength + " bytes" + ")");
+                rootnode.children[1].appendChild(sublist);
+                //ignore first 40 bytes (GUID, etc)
+                sublist.children[1].appendChild(await readJPGText(file, newlength - (subName.length + 4 + 40), byteoffset + subName.length + 5 + 40, "XMP Extension XML"));
             } else if (markerText != "skip") {
                 //and just display the rest
                 let li = makeNewBottomNode("Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
@@ -132,4 +145,26 @@ async function getJPGdata(file) {
     catch (err) {
         console.log(err);
     }
+}
+
+//helper function for grabbing large text from a JPG file
+async function readJPGText(file, textLength, startPos, labelfortag) {
+    if (textLength < MAX_TEXT_LENGTH_TEXTS) {
+        //go grab the string that represents the text
+        let tbuff = await file.slice(startPos, startPos + textLength).arrayBuffer();
+        let tview = new DataView(tbuff);
+        let val = readText(tview, 0, textLength);
+        if (textLength < MAX_TEXT_LENGTH_TREE) {
+            subentry = makeNewBottomNode(labelfortag + ": " + val);
+        } else {
+            subentry = makeNewBottomNode(labelfortag + ": TOO LONG TO DISPLAY HERE");
+        }
+        //put in downloadable link
+        addDownloadableLink("Extract " + labelfortag, val, "XMP Download For " + file.name + ".txt");
+    } else {
+        subentry = makeNewBottomNode(labelfortag);
+        textNames.push(labelfortag);
+        textValues.push("VALUE TOO LONG TO BE DISPLAYED");
+    }
+    return subentry;
 }
