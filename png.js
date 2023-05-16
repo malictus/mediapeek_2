@@ -131,19 +131,20 @@ async function getPNGdata(file) {
                     } else {
                         sublist.children[1].appendChild(makeNewBottomNode("Text: " + theText));
                     }
-                    //add to our text lists
-                    if (chunktype == "zTXt") {
-                        textNames.push("zTXt Chunk Compressed Text: " + keyword);
-                    } else if (chunktype == "tEXt") {
-                        textNames.push("tEXt Chunk Text: " + keyword);
-                    } else {
-                        textNames.push("iTXt Chunk Text: " + keyword);
-                    }
-                    textValues.push(theText);
                     //dig into XMP text data to see if there are GPS coordinates and to create download link
                     if (keyword.toUpperCase().includes("XMP")) {
-                        findGPSInExifText(theText); 
+                        findGPSInExifText(theText);
                         addDownloadableLink("Extract XMP Metadata (XML)", theText, "XMP Download For " + file.name + ".txt");
+                    } else {
+                        //add to our text lists
+                        if (chunktype == "zTXt") {
+                            textNames.push("zTXt Chunk Compressed Text: " + keyword);
+                        } else if (chunktype == "tEXt") {
+                            textNames.push("tEXt Chunk Text: " + keyword);
+                        } else {
+                            textNames.push("iTXt Chunk Text: " + keyword);
+                        }
+                        textValues.push(theText);
                     }
                 }
             } else if (chunktype == "pHYs" && length == 9) {

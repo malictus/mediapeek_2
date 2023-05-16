@@ -221,8 +221,8 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
             labelfortag = labelfortag + " (" + thenode.name + ")";
         }
         //first, special cases
-        if (((idtag == 2) || (idtag == 4)) && (fieldcount == 3) && (fieldtype = 5)) {
-            //calculate the latitude and longitude
+        if (((idtag == 2) || (idtag == 4) || (idtag == 7)) && (fieldcount == 3) && (fieldtype = 5)) {
+            //calculate fractional data
             let subbuff = await file.slice(fieldbyteoffset + offsetToFile, fieldbyteoffset + 24 + offsetToFile).arrayBuffer();    //read in the 6 numbers
             let subview = new DataView(subbuff);
             let numerator1 = subview.getUint32(0, isLittleEndian);
@@ -231,15 +231,21 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
             let denominator2 = subview.getUint32(12, isLittleEndian);
             let numerator3 = subview.getUint32(16, isLittleEndian);
             let denominator3 = subview.getUint32(20, isLittleEndian);
-            tagentry = makeNewBottomNode(labelfortag + ": " + (numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
+            if (idtag == 7) {
+                tagentry = makeNewBottomNode(labelfortag + ": " + (numerator1 / denominator1) + ":" + (numerator2 / denominator2) + ":" + (numerator3 / denominator3));
+            } else {
+                tagentry = makeNewBottomNode(labelfortag + ": " + (numerator1 / denominator1) + ", " + (numerator2 / denominator2) + ", " + (numerator3 / denominator3));
+            }
             if (idtag == 2) {
                 OSMLatitude = (numerator1 / denominator1) + ((numerator2 / denominator2) / 60) + ((numerator3 / denominator3) / 3600);
             } else if (idtag == 4) {
                 OSMLongitude = (numerator1 / denominator1) + ((numerator2 / denominator2) / 60) + ((numerator3 / denominator3) / 3600);
+            } else if (idtag == 7) {
+                OSMTimeStamp = (numerator1 / denominator1) + ":" + (numerator2 / denominator2) + ":" + (numerator3 / denominator3) + " UTC";
             }
         } else if (idtag == 700) {
             //XMP (XML) data; treat as text but NOT null-terminated (thus the "+1")
-            tagentry = await readTIFFTextTag(file, fieldcount + 1, fieldbyteoffset + offsetToFile, labelfortag);
+            tagentry = await readTIFFTextTag(file, fieldcount + 1, fieldbyteoffset + offsetToFile, labelfortag, false);
             //add this to downloadable links (slice(-1) is a hack to grab the last value we just in above)
             addDownloadableLink("Extract XMP Metadata (XML)", textValues.slice(-1), "XMP Download For " + file.name + ".txt");
         } else if ((idtag == 34665) || (idtag == 34853)) {
@@ -288,6 +294,10 @@ async function readIFDTags(file, aview, offsettoIFD, sublist, isLittleEndian, nu
                     } else {
                         //read the text in (currently, only reads first string; technically there could be more than one null-terminated string)
                         tagentry = await readTIFFTextTag(file, fieldcount, fieldbyteoffset + offsetToFile, labelfortag);
+                    }
+                    if (idtag == 29) {
+                        //this is date stamp
+                        OSMDateStamp = textValues.slice(-1);
                     }
                     break;
                 case 3:
@@ -374,7 +384,7 @@ async function parseEXIFFile(file, start, nodeString) {
 }
 
 //helper function for building text tags in the TIFF file
-async function readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag) {
+async function readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag, addToList = true) {
     if (fieldcount < MAX_TEXT_LENGTH_TEXTS) {
         //go grab the string that represents the text
         let tbuff = await file.slice(fieldbyteoffset, fieldbyteoffset + (fieldcount - 1)).arrayBuffer();
@@ -385,12 +395,16 @@ async function readTIFFTextTag(file, fieldcount, fieldbyteoffset, labelfortag) {
         } else {
             subentry = makeNewBottomNode(labelfortag + ": TOO LONG TO DISPLAY HERE");
         }
-        textNames.push(labelfortag);
-        textValues.push(val);
+        if (addToList) {
+            textNames.push(labelfortag);
+            textValues.push(val);
+        }
     } else {
         subentry = makeNewBottomNode(labelfortag);
-        textNames.push(labelfortag);
-        textValues.push("VALUE TOO LONG TO BE DISPLAYED");
+        if (addToList) {
+            textNames.push(labelfortag);
+            textValues.push("VALUE TOO LONG TO BE DISPLAYED");
+        }
     }
     return subentry;
 }

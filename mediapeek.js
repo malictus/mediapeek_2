@@ -7,9 +7,11 @@ const MAX_PICTURE_SIZE = 100000000;
 //arrays for the strings we're displaying
 const textNames = [];
 const textValues = [];
-//holders for latitude and longitude for the openstreetmap view
+//holders for GPS data for the openstreetmap view
 OSMLatitude = 0;
 OSMLongitude = 0;
+OSMDateStamp = "";
+OSMTimeStamp = "";
 
 /************************************************************************************************************ */
 /**
@@ -131,7 +133,10 @@ function clearOldData() {
     //clear GPS
     OSMLatitude = 0;
     OSMLongitude = 0;
+    OSMDateStamp = "";
+    OSMTimeStamp = "";
     document.getElementById('map').innerHTML = "";
+    document.getElementById('mapinfo').innerHTML = "";
     document.getElementById('downloadlinks').innerHTML = "";
 }
 
@@ -170,6 +175,14 @@ function populateStreetMap() {
             attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
         var marker = L.marker([OSMLatitude, OSMLongitude]).addTo(map);
+        let infoText = "";
+        if (OSMTimeStamp !== "") {
+            infoText = infoText + "Time: " + OSMTimeStamp + "\n";
+        }
+        if (OSMDateStamp !== "") {
+            infoText = infoText + "Date: " + OSMDateStamp;
+        }
+        document.getElementById('mapinfo').innerText = infoText;
     } else {
         document.getElementById('map').innerHTML = "NONE FOUND";
     }
@@ -177,6 +190,10 @@ function populateStreetMap() {
 
 //search through a pile of Exif data in XMP format, pull out the GPS data if it exists, and enable our map
 function findGPSInExifText(text) {
+    //this method is less reliable than if the data is directly encoded, so we'll skip it if it already exists
+    if (OSMLatitude != 0) {
+        return;
+    }
     if ((text.includes("exif:GPSLatitude=")) && (text.includes("exif:GPSLongitude="))) {
         let latstart = text.indexOf("exif:GPSLatitude=\"") + 18;
         let latend = text.indexOf("\"", latstart);
@@ -200,6 +217,12 @@ function findGPSInExifText(text) {
         }
         OSMLatitude = reallat;
         OSMLongitude = reallong;
+        //look for a timestamp if it exists
+        if (text.includes("exif:GPSTimeStamp")) {
+            let timestart = text.indexOf("exif:GPSTimeStamp=\"") + 19;
+            let timeend = text.indexOf("\"", timestart);
+            OSMTimeStamp = text.substring(timestart, timeend);
+        }
     }
 }
 

@@ -62,8 +62,6 @@ async function getWAVdata(file) {
                     //really really large text field; don't grab it
                     let li = makeNewBottomNode("_PMX Chunk (" + length + " bytes" + ") - XMP Metadata - TOO LARGE TO DISPLAY");
                     rootnode.children[1].appendChild(li);
-                    textNames.push("_PMX Chunk - XMP Metadata");
-                    textValues.push("TOO LARGE TO DISPLAY");
                 } else {
                     //this node will be parent of others (ul)
                     let sublist = makeNewNode("_PMX Chunk (" + length + " bytes" + ") -  XMP Metadata");
@@ -77,9 +75,6 @@ async function getWAVdata(file) {
                     } else {
                         sublist.children[1].appendChild(makeNewBottomNode("Text: " + val));
                     }
-                    //add to our text lists
-                    textNames.push("_PMX (XMP) Data");
-                    textValues.push(val);
                     //add to downloadable links
                     addDownloadableLink("Extract XMP Metadata (XML)", val, "XMP Download For " + file.name + ".txt");
                 }
