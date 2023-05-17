@@ -132,7 +132,7 @@ async function getPNGdata(file) {
                         sublist.children[1].appendChild(makeNewBottomNode("Text: " + theText));
                     }
                     //dig into XMP text data to see if there are GPS coordinates and to create download link
-                    if (keyword.toUpperCase().includes("XMP")) {
+                    if (keyword.toUpperCase().includes("ADOBE.XMP")) {
                         findGPSInExifText(theText);
                         addDownloadableLink("Extract XMP Metadata (XML)", theText, "XMP Download For " + file.name + ".txt");
                     } else {
@@ -167,11 +167,9 @@ async function getPNGdata(file) {
                 let li = makeNewBottomNode(chunktype + " Chunk (" + length + " bytes" + ") - Embedded ICC Profile");
                 rootnode.children[1].appendChild(li);
             } else if (chunktype == "IDAT") {
-                let li = makeNewBottomNode(chunktype + " Chunk (" + length + " bytes" + ") - Image Data");
-                rootnode.children[1].appendChild(li);
+                //ignore this one
             } else if (chunktype == "IEND") {
-                let li = makeNewBottomNode(chunktype + " Chunk (" + length + " bytes" + ") - Final PNG Chunk");
-                rootnode.children[1].appendChild(li);
+                //ignore this one
             } else if (chunktype == "gAMA" && length == 4) {
                 //this node will be parent of others (ul)
                 let sublist = makeNewNode(chunktype + " Chunk (" + length + " bytes" + ") - Image Gamma");

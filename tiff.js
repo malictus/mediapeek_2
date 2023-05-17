@@ -42,6 +42,8 @@ const tifftags = [
     { "tag": 306, "name": "Date / Time" },
     { "tag": 315, "name": "Artist" },
     { "tag": 317, "name": "Predictor" },
+    { "tag": 318, "name": "White Point" },
+    { "tag": 319, "name": "Primary Chromaticities" },
     { "tag": 320, "name": "Color Map" },
     { "tag": 338, "name": "Extra Samples" },
     { "tag": 339, "name": "Sample Format" },
