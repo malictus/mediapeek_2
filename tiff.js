@@ -49,7 +49,8 @@ const tifftags = [
     { "tag": 339, "name": "Sample Format" },
     { "tag": 347, "name": "JPEG Tables" },
     { "tag": 530, "name": "YCbCrSubSampling" },  
-    { "tag": 531, "name": "YCbCrPositioning" },  
+    { "tag": 531, "name": "YCbCrPositioning" },
+    { "tag": 532, "name": "Reference Black White" },
     { "tag": 700, "name": "XMP Metadata" },
     { "tag": 33434, "name": "Exposure Time" },
     { "tag": 33437, "name": "F Number" },
@@ -96,6 +97,7 @@ const tifftags = [
     { "tag": 41495, "name": "Sensing Method" },
     { "tag": 41728, "name": "File Source" }, 
     { "tag": 41729, "name": "Scene Type" },
+    { "tag": 41730, "name": "CFA Pattern" },
     { "tag": 41985, "name": "Custom Rendered" },
     { "tag": 41986, "name": "Exposure Mode" },
     { "tag": 41987, "name": "White Balance" },
@@ -110,6 +112,7 @@ const tifftags = [
     { "tag": 42016, "name": "Image Unique ID" },
     { "tag": 42035, "name": "Lens Make" },
     { "tag": 42036, "name": "Lens Model" },
+    { "tag": 42080, "name": "Composite Image" },
     { "tag": 50341, "name": "PrintImageMatching" },    
 ];
 

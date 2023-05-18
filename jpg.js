@@ -134,6 +134,12 @@ async function getJPGdata(file) {
                 rootnode.children[1].appendChild(sublist);
                 //ignore first 40 bytes (GUID, etc)
                 sublist.children[1].appendChild(await readJPGText(file, newlength - (subName.length + 4 + 40), byteoffset + subName.length + 5 + 40, "XMP Extension XML"));
+            } else if (marker == 0xFE) {
+                //read in a chunk of text
+                let sublist = makeNewNode("Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
+                rootnode.children[1].appendChild(sublist);
+                //read the text
+                sublist.children[1].appendChild(await readJPGText(file, newlength - 2, byteoffset + 4, "Comment Text", false));
             } else if (markerText != "skip") {
                 //and just display the rest
                 let li = makeNewBottomNode("Marker #" + marker + " - " + markerText + " (" + newlength + " bytes" + ")");
@@ -148,7 +154,7 @@ async function getJPGdata(file) {
 }
 
 //helper function for grabbing large text from a JPG file
-async function readJPGText(file, textLength, startPos, labelfortag) {
+async function readJPGText(file, textLength, startPos, labelfortag, makeDownloadable = true) {
     if (textLength < MAX_TEXT_LENGTH_TEXTS) {
         //go grab the string that represents the text
         let tbuff = await file.slice(startPos, startPos + textLength).arrayBuffer();
@@ -159,8 +165,13 @@ async function readJPGText(file, textLength, startPos, labelfortag) {
         } else {
             subentry = makeNewBottomNode(labelfortag + ": TOO LONG TO DISPLAY HERE");
         }
-        //put in downloadable link
-        addDownloadableLink("Extract " + labelfortag, val, "XMP Download For " + file.name + ".txt");
+        if (makeDownloadable) {
+            //put in downloadable link
+            addDownloadableLink("Extract " + labelfortag, val, "XMP Download For " + file.name + ".txt");
+        } else {
+            textNames.push(labelfortag);
+            textValues.push(val);
+        }
     } else {
         subentry = makeNewBottomNode(labelfortag);
         textNames.push(labelfortag);

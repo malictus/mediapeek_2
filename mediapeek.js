@@ -176,6 +176,7 @@ function populateStreetMap() {
         }).addTo(map);
         var marker = L.marker([OSMLatitude, OSMLongitude]).addTo(map);
         let infoText = "";
+        infoText = infoText + "Coordinates: " + OSMLatitude + ", " + OSMLongitude + "\n";
         if (OSMTimeStamp !== "") {
             infoText = infoText + "Time: " + OSMTimeStamp + "\n";
         }
